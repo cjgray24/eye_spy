@@ -1,0 +1,60 @@
+[eye_spy]
+
+[Entities]
+
+# Shows entities you are looking at, displaying their name, health, and type.
+eye_spy.show_entities (Show Entities) bool true
+
+[Liquids]
+
+# Enables liquid-aware targeting. When enabled, Eye Spy can scan through liquid
+# surfaces, show the liquid line, and still show the target block behind it.
+eye_spy.show_liquids (Show Liquids) bool false
+
+[Display]
+
+# Always shows "Hand" as the required tool in creative mode, regardless of node type.
+eye_spy.always_show_hand_in_creative (Always Show "Hand" in Creative Mode) bool true
+
+# Forces all item/node icons in the HUD to render at this pixel size.
+# When set to None, each texture is displayed at its native size.
+# Note: when mod security is disabled, sizes are detected automatically.
+eye_spy.texture_pack_size (Texture Pack Size) enum None None,1x1px,2x2px,4x4px,8x8px,16x16px,32x32px,64x64px,128x128px,256x256px,512x512px,1024x1024px
+
+# Shows growth progress and soil condition lines for supported plants and saplings.
+eye_spy.show_growth (Show Growth Details) bool true
+
+# Shows a small icon representing the current target in the HUD panel.
+eye_spy.show_icons (Show Target Icon) bool true
+
+[Performance]
+
+# Sets the initial server-wide HUD update interval in seconds.
+# This value is only applied on the first server start if no override has been
+# saved via /eye_spy_rate. After that, use /eye_spy_rate to change the interval
+# at runtime without restarting the server.
+eye_spy.update_interval (Update Interval) float 0.25 0.05 5.0
+
+# Enable lightweight Eye Spy performance metrics collection.
+# Can also be toggled at runtime with /eye_spy_perf on|off.
+eye_spy.enable_perf_metrics (Enable Performance Metrics) bool false
+
+[Defaults]
+
+# Default HUD visibility settings applied to new players on first join.
+# Players can override all of these individually in /eye_spy_settings.
+
+# Show coordinates of the targeted block/entity in the HUD footer.
+eye_spy.default_show_coords (Default: Show Coords in Footer) bool false
+
+# Show the ambient light level at the targeted block.
+eye_spy.default_show_light_level (Default: Show Light Level) bool true
+
+# Show a mob-spawn risk estimate based on light level at the targeted block.
+eye_spy.default_show_spawn_hint (Default: Show Spawn Hint) bool false
+
+# Show liquid name and level when looking at or through liquid.
+eye_spy.default_show_liquid_info (Default: Show Liquid Info) bool true
+
+# Show the estimated time to dig the targeted block with the current tool.
+eye_spy.default_show_dig_time (Default: Show Dig Time) bool true

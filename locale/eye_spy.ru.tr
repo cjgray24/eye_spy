@@ -1,0 +1,38 @@
+# textdomain: eye_spy
+
+Hand=Рука
+Pickaxe=Кирка
+Sword=Меч
+Shears=Ножницы
+Axe=Топор
+Shovel=Лопата
+
+Unbreakable=Неразрушимый
+None=Нет
+Type=Тип
+Health=Здоровье
+
+Unknown=Неизвестно
+
+Preview=Предпросмотр
+Hud Alignment=Выравнивание HUD
+Top-Middle=Верх-Середина
+Top-Right=Верх-Право
+Top-Left=Верх-Лево
+Middle-Right=Середина-Право
+Middle-Left=Середина-Лево
+Bottom-Right=Низ-Право
+Bottom-Left=Низ-Лево
+Health in=Здоровье в
+Points=Очки
+Hearts=Сердца
+Set to Default=Сбросить по умолчанию
+Change Preview to=Изменить предпросмотр на
+Node=Блок
+Entity=Сущность
+Cancel=Отмена
+Apply Changes=Применить изменения
+
+Count=
+Durability=
+Metadata=

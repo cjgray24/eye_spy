@@ -1,0 +1,38 @@
+# textdomain: eye_spy
+
+Hand=Ręka
+Pickaxe=Kilof
+Sword=Miecz
+Shears=Nożyce
+Axe=Siekiera
+Shovel=Łopata
+
+Unbreakable=Niezniszczalny
+None=Brak
+Type=Typ
+Health=Zdrowie
+
+Unknown=Nieznane
+
+Preview=Podgląd
+Hud Alignment=Wyrównanie HUD
+Top-Middle=Góra-Środek
+Top-Right=Góra-Prawo
+Top-Left=Góra-Lewo
+Middle-Right=Środek-Prawo
+Middle-Left=Środek-Lewo
+Bottom-Right=Dół-Prawo
+Bottom-Left=Dół-Lewo
+Health in=Zdrowie w
+Points=Punkty
+Hearts=Serca
+Set to Default=Przywróć domyślne
+Change Preview to=Zmień podgląd na
+Node=Węzeł
+Entity=Encja
+Cancel=Anuluj
+Apply Changes=Zastosuj zmiany
+
+Count=
+Durability=
+Metadata=

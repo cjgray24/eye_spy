@@ -1,0 +1,38 @@
+# textdomain: eye_spy
+
+Hand=Mano
+Pickaxe=Pico
+Sword=Espada
+Shears=Tijeras
+Axe=Hacha
+Shovel=Pala
+
+Unbreakable=Irrompible
+None=Ninguno
+Type=Tipo
+Health=Salud
+
+Unknown=Desconocido
+
+Preview=Vista previa
+Hud Alignment=Alineación del HUD
+Top-Middle=Arriba-Centro
+Top-Right=Arriba-Derecha
+Top-Left=Arriba-Izquierda
+Middle-Right=Centro-Derecha
+Middle-Left=Centro-Izquierda
+Bottom-Right=Abajo-Derecha
+Bottom-Left=Abajo-Izquierda
+Health in=Salud en
+Points=Puntos
+Hearts=Corazones
+Set to Default=Restablecer valores
+Change Preview to=Cambiar vista previa a
+Node=Nodo
+Entity=Entidad
+Cancel=Cancelar
+Apply Changes=Aplicar cambios
+
+Count=
+Durability=
+Metadata=

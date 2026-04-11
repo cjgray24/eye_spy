@@ -1,0 +1,38 @@
+# textdomain: eye_spy
+
+Hand=Main
+Pickaxe=Pioche
+Sword=Épée
+Shears=Cisailles
+Axe=Hache
+Shovel=Pelle
+
+Unbreakable=Incassable
+None=Aucun
+Type=Type
+Health=Santé
+
+Unknown=Inconnu
+
+Preview=Aperçu
+Hud Alignment=Alignement HUD
+Top-Middle=Haut-Centre
+Top-Right=Haut-Droite
+Top-Left=Haut-Gauche
+Middle-Right=Milieu-Droite
+Middle-Left=Milieu-Gauche
+Bottom-Right=Bas-Droite
+Bottom-Left=Bas-Gauche
+Health in=Vie en
+Points=Points
+Hearts=Cœurs
+Set to Default=Réinitialiser
+Change Preview to=Changer l’aperçu en
+Node=Nœud
+Entity=Entité
+Cancel=Annuler
+Apply Changes=Appliquer les modifications
+
+Count=
+Durability=
+Metadata=
