@@ -109,7 +109,7 @@ eye_spy.config = {
     -- How often (in seconds) the HUD was refreshed under the old single-float
     -- scheme.  Default 0.25 s = 250 ms.
     -- Corresponds to eye_spy.update_interval in settings.
-    update_interval = tonumber(settings:get("eye_spy.update_interval")) or 0.25,
+    update_interval = tonumber(settings:get("eye_spy.update_interval")) or 0.1,
 
     -- -------------------------------------------------------------------------
     -- Performance metrics

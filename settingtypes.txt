@@ -33,7 +33,7 @@ eye_spy.show_icons (Show Target Icon) bool true
 # This value is only applied on the first server start if no override has been
 # saved via /eye_spy_rate. After that, use /eye_spy_rate to change the interval
 # at runtime without restarting the server.
-eye_spy.update_interval (Update Interval) float 0.25 0.05 5.0
+eye_spy.update_interval (Update Interval) float 0.1 0.05 5.0
 
 # Enable lightweight Eye Spy performance metrics collection.
 # Can also be toggled at runtime with /eye_spy_perf on|off.
