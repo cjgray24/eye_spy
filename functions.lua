@@ -218,7 +218,7 @@ function eye_spy.get_player_state(player)
             skip_static_acquire = false,
             hud_hidden_since_us = nil,
             last_recover_try_us = 0,
-            hud_ids             = { lines = {} },
+            hud_ids             = { lines = {}, content_rows = {} },
         }
         eye_spy.state.players[player_name] = state
     end
@@ -405,6 +405,10 @@ function eye_spy.ensure_player_defaults(player)
         meta:set_string("es_hud_enabled", "true")
     end
 
+    if meta:get_string("es_bg_alpha") == "" then
+        meta:set_int("es_bg_alpha", eye_spy.config.default_bg_alpha)
+    end
+
     eye_spy.apply_player_interval(player)
 
     local int_defaults = {
@@ -424,20 +428,20 @@ function eye_spy.ensure_player_defaults(player)
         es_footer_offset_y    = 0,
         es_bg_pad_left        = 7,
         es_bg_pad_right       = 0,
-        es_bg_pad_top         = 5,
+        es_bg_pad_top         = 2,
         es_bg_pad_bottom      = 0,
         es_bg_extra_w         = 0,
         es_bg_extra_h         = 0,
         es_bg_scale_x_pct     = 100,
         es_bg_scale_y_pct     = 100,
-        es_icon_size          = 56,
+        es_icon_size          = 20,
         es_title_scale_pct    = 100,
         es_subtitle_scale_pct = 100,
         es_line_scale_pct     = 100,
         es_footer_scale_pct   = 100,
         es_first_line_y_adj   = 0,
-        es_line_step_adj      = -2, -- matches LAYOUT_META_DEFAULTS in ui.lua
-        es_footer_nudge_adj   = 0,
+        es_line_step_adj      = -6,
+        es_footer_nudge_adj   = -4,
         es_text_base_x_adj    = 0,
         es_icon_base_x_adj    = 0,
         es_top_margin_adj     = 0,

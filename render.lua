@@ -6,10 +6,10 @@ eye_spy.render                   = {}
 -- wrong or stale layout for existing players.
 local RENDER_LAYOUT_REV          = "advanced-layout-controls-v2-padding-fix"
 local ICON_TEXTURE_SIZE          = 32
-local ICON_DISPLAY_SIZE          = 56
+local ICON_DISPLAY_SIZE          = 20
 local ENTITY_ICON_TEXTURE        = "heart.png"
 local BASE_LAYOUT_LINE_ROWS      = 6
-local MAX_LAYOUT_SCALE_FACTOR    = 3
+local MAX_LAYOUT_SCALE_FACTOR    = 5
 
 local FIXED_LINE_ROW_BY_ID       = {
     dig_time = 1,
@@ -160,6 +160,27 @@ local function estimate_panel_width(view_model, layout_lines)
     local grow_chars = math.max(0, max_len - baseline_char_budget)
     local required_width = baseline_width + math.floor(grow_chars * 6)
 
+    -- Account for content rows width (pixel → char equivalent)
+    local element_padding = math.max(0, eye_spy.config.content_row_element_padding or 4)
+    local max_row_width_px = 0
+    for _, row in ipairs(view_model.content_rows or {}) do
+        local row_width = 0
+        for _, elem in ipairs(row.elements or {}) do
+            if elem.type == "image" then
+                row_width = row_width + (elem.size or eye_spy.config.content_row_icon_size or 16)
+            elseif elem.type == "text" then
+                local scale = elem.scale or 1.0
+                row_width = row_width + (elem.width or math.ceil(#(elem.text or "") * 6 * scale))
+            end
+            row_width = row_width + element_padding
+        end
+        max_row_width_px = math.max(max_row_width_px, row_width)
+    end
+    if max_row_width_px > 0 then
+        local max_row_len_chars = math.ceil(max_row_width_px / 6)
+        required_width = math.max(required_width, baseline_width + math.floor(math.max(0, max_row_len_chars - baseline_char_budget) * 6))
+    end
+
     return clamp(required_width, baseline_width, baseline_width * MAX_LAYOUT_SCALE_FACTOR)
 end
 
@@ -287,6 +308,10 @@ local function texture_text(target)
         return ENTITY_ICON_TEXTURE .. "^[resize:" .. ICON_TEXTURE_SIZE .. "x" .. ICON_TEXTURE_SIZE
     end
 
+    if target and target.inventory_texture then
+        return target.inventory_texture
+    end
+
     local texture = target.texture or "eye_spy_default_texture.png"
 
     if type(texture) == "table" then
@@ -380,6 +405,7 @@ local function build_key(view_model)
         view_model.layout_signature or "",
         view_model.layout,
         view_model.bg_color,
+        tostring(view_model.bg_alpha),
         view_model.title,
         tostring(view_model.title_color),
         view_model.subtitle,
@@ -388,12 +414,22 @@ local function build_key(view_model)
         tostring(view_model.footer_color),
         view_model.icon and view_model.icon.text or "",
         tostring(#view_model.lines),
+        tostring(#(view_model.content_rows or {})),
     }
 
     for _, line in ipairs(view_model.lines) do
         parts[#parts + 1] = line.id
         parts[#parts + 1] = line.text
         parts[#parts + 1] = tostring(line.color)
+        parts[#parts + 1] = line.semantic and "1" or "0"
+    end
+
+    for _, row in ipairs(view_model.content_rows or {}) do
+        for _, elem in ipairs(row.elements or {}) do
+            parts[#parts + 1] = elem.type or ""
+            parts[#parts + 1] = elem.texture or elem.text or ""
+            parts[#parts + 1] = tostring(elem.color or 0xFFFFFF)
+        end
     end
 
     return table.concat(parts, "|")
@@ -421,6 +457,28 @@ local function ensure_hud_slot(player, hud_ids, key, expected_type, spec)
 
     if not id then
         hud_ids[key] = player:hud_add(spec)
+    end
+end
+
+function eye_spy.render.ensure_content_row_slots(state, player, row_count, max_elements)
+    local hud_ids = state.hud_ids
+    hud_ids.content_rows = hud_ids.content_rows or {}
+
+    local rows = hud_ids.content_rows
+
+    -- Remove excess rows entirely
+    while #rows > row_count do
+        local row = rows[#rows]
+        for _, id in ipairs(row) do
+            if id and player:hud_get(id) then
+                player:hud_remove(id)
+            end
+        end
+        rows[#rows] = nil
+    end
+
+    for i = 1, row_count do
+        rows[i] = rows[i] or {}
     end
 end
 
@@ -531,6 +589,12 @@ function eye_spy.render.hide(state, player)
     for _, line_id in ipairs(hud_ids.lines) do
         player:hud_change(line_id, "text", "")
     end
+
+    for _, row in ipairs(hud_ids.content_rows or {}) do
+        for _, id in ipairs(row) do
+            player:hud_change(id, "text", "")
+        end
+    end
 end
 
 function eye_spy.render.remove(player)
@@ -544,12 +608,20 @@ function eye_spy.render.remove(player)
                     player:hud_remove(line_id)
                 end
             end
+        elseif key == "content_rows" then
+            for _, row in ipairs(value) do
+                for _, id in ipairs(row) do
+                    if id and player:hud_get(id) then
+                        player:hud_remove(id)
+                    end
+                end
+            end
         elseif value and player:hud_get(value) then
             player:hud_remove(value)
         end
     end
 
-    state.hud_ids = { lines = {} }
+    state.hud_ids = { lines = {}, content_rows = {} }
     state.last_render_key = nil
     state.last_geom_key = nil
 end
@@ -582,18 +654,16 @@ function eye_spy.render.build_view_model(player, target, opts)
     local footer_text
     local coords_text = show_coords and ("  " .. position_text(target.pos)) or ""
 
-    if footer_mode == "advanced" then
-        local full_name = target.full_name or target.name or S("Unknown")
-        footer_text = "[" .. full_name .. "] [" .. (target.modname or S("Unknown")) .. "]" .. coords_text
-    else
-        footer_text = "[" .. (target.modname or S("Unknown")) .. "]" .. coords_text
-    end
+    local modname = target.modname or S("Unknown")
+    local basename = target.name and target.name:match(":(.+)$") or target.name or S("Unknown")
+    footer_text = "[" .. modname .. "] [" .. basename .. "]" .. coords_text
 
     local view_model = {
         visible = target.kind ~= "air",
         layout = get_effective_string(meta, draft, "es_hud_alignment") ~= "" and
             get_effective_string(meta, draft, "es_hud_alignment") or "Top-Middle",
         bg_color = eye_spy.rgb_to_hex(r or 26, g or 26, b or 27),
+        bg_alpha = clamp(get_effective_int(meta, draft, "es_bg_alpha"), 0, 255),
         title = target.description or target.name or S("Unknown"),
         title_color = 0xFFFFFF,
         subtitle = target.kind == "entity" and S("Entity") or (target.kind == "item" and S("Item") or S("Node")),
@@ -601,6 +671,7 @@ function eye_spy.render.build_view_model(player, target, opts)
         footer = footer_text,
         footer_color = 0x4C7EE8,
         lines = {},
+        content_rows = {},
         layout_signature = draft and get_layout_signature_from_values(meta, draft) or
             get_layout_signature(meta, player:get_player_name()),
     }
@@ -622,6 +693,13 @@ function eye_spy.render.build_view_model(player, target, opts)
     if perf_on then
         eye_spy.perf_record("build_vm_enrichers", minetest.get_us_time() - phase_start_us)
         phase_start_us = minetest.get_us_time()
+    end
+
+    -- Run post-apply hook if any enricher registered one.
+    -- This runs AFTER all enrichers, ensuring final cleanup/overrides.
+    if view_model.post_apply then
+        view_model.post_apply(view_model)
+        view_model.post_apply = nil
     end
 
     local show_growth = get_effective_string(meta, draft, "es_show_growth") ~= "false"
@@ -661,7 +739,7 @@ function eye_spy.render.build_view_model(player, target, opts)
         )
 
         for _, line in ipairs(view_model.lines) do
-            if line.id == "growth" or line.id == "soil" then
+            if line.id == "growth" or line.id == "soil" or line.semantic then
                 line.color = adjust_semantic_line_color(line.color, bg_color_int)
             else
                 line.color = get_auto_line_accent(line.id, view_model.bg_color, bg_color_int, base_text, bg_luminance)
@@ -673,7 +751,7 @@ function eye_spy.render.build_view_model(player, target, opts)
         view_model.footer_color = spectrum_color(get_effective_int(meta, draft, "es_footer_color_val"))
 
         for _, line in ipairs(view_model.lines) do
-            if line.id == "growth" or line.id == "soil" then
+            if line.id == "growth" or line.id == "soil" or line.semantic then
                 line.color = adjust_semantic_line_color(line.color, bg_color_int)
             else
                 line.color = spectrum_color(get_effective_int(meta, draft, "es_line_color_val"))
@@ -705,6 +783,12 @@ function eye_spy.render.apply(state, player, view_model)
     local draft = get_player_draft(player)
     local layout = layouts[view_model.layout] or layouts["Top-Middle"]
     local line_count = visible_line_rows
+    local content_row_count = #(view_model.content_rows or {})
+    local content_row_step_val = math.max(8, eye_spy.config.content_row_step or 18)
+    local element_padding = math.max(0, eye_spy.config.content_row_element_padding or 4)
+    local content_icon_size = math.max(8, math.min(32, eye_spy.config.content_row_icon_size or 16))
+    local content_icon_scale = content_icon_size / ICON_TEXTURE_SIZE
+
     local global_offset_x = get_effective_int(meta, draft, "es_global_offset_x")
     local global_offset_y = get_effective_int(meta, draft, "es_global_offset_y")
     local bg_offset_x = get_effective_int(meta, draft, "es_bg_offset_x")
@@ -735,7 +819,7 @@ function eye_spy.render.apply(state, player, view_model)
     local first_line_y = 52 + get_effective_int(meta, draft, "es_first_line_y_adj")
     local line_step = math.max(10, 18 + get_effective_int(meta, draft, "es_line_step_adj"))
     local footer_nudge = -10 + get_effective_int(meta, draft, "es_footer_nudge_adj")
-    local footer_y = first_line_y + (line_count * line_step) + 10 + footer_nudge
+    local footer_y = first_line_y + (line_count * line_step) + (content_row_count * content_row_step_val) + 10 + footer_nudge
 
     local content_top = title_y - 8 - bg_pad_top
     local content_bottom = footer_y + 22 + bg_pad_bottom
@@ -774,6 +858,9 @@ function eye_spy.render.apply(state, player, view_model)
     local left_edge_x = center_x - math.floor(bg_width / 2)
     local icon_x = left_edge_x + 28 + bg_pad_left + icon_base_x_adj + icon_offset_x
     local text_x = left_edge_x + (view_model.icon and 68 or 16) + bg_pad_left + text_base_x_adj
+    if content_row_count > 0 then
+        text_x = math.max(text_x, left_edge_x + 48)
+    end
 
     local bg_scale_x_pct = clamp(get_effective_int(meta, draft, "es_bg_scale_x_pct"), 25, 300)
     local bg_scale_y_pct = clamp(get_effective_int(meta, draft, "es_bg_scale_y_pct"), 25, 300)
@@ -787,14 +874,22 @@ function eye_spy.render.apply(state, player, view_model)
 
     local bg_center_y = origin_y + math.floor(bg_height / 2) - bg_pad_top
 
+    local max_elements_per_row = 0
+    for _, row in ipairs(view_model.content_rows or {}) do
+        max_elements_per_row = math.max(max_elements_per_row, #(row.elements or {}))
+    end
+
     -- Geometry channel: position, offset, scale.
     -- Only sent when layout or panel dimensions actually changed.
     local geom_key = (view_model.layout or "")
         .. "|" .. (view_model.layout_signature or "")
         .. "|" .. tostring(bg_draw_w)
         .. "|" .. tostring(bg_draw_h)
-        .. "|" .. tostring(line_count)
+        .. "|" .. tostring(line_count + content_row_count)
         .. "|" .. (view_model.icon and tostring(math.floor(view_model.icon.scale.x * 64)) or "0")
+        .. "|" .. tostring(content_row_count)
+        .. "|" .. tostring(math.floor(content_icon_scale * 64))
+        .. "|" .. tostring(max_elements_per_row)
 
     if geom_key ~= (state.last_geom_key or "") then
         state.last_geom_key = geom_key
@@ -834,7 +929,7 @@ function eye_spy.render.apply(state, player, view_model)
     end
 
     -- Content channel: text, number/color -- always applied when view_model changed.
-    player:hud_change(state.hud_ids.bg, "text", "eye_spy_hud_bg.png^[multiply:#" .. view_model.bg_color)
+    player:hud_change(state.hud_ids.bg, "text", "eye_spy_hud_bg.png^[multiply:#" .. view_model.bg_color .. "^[opacity:" .. view_model.bg_alpha)
 
     player:hud_change(state.hud_ids.title, "text", view_model.title)
     player:hud_change(state.hud_ids.title, "number", view_model.title_color)
@@ -859,6 +954,104 @@ function eye_spy.render.apply(state, player, view_model)
             player:hud_change(line_id, "number", line.color)
         else
             player:hud_change(line_id, "text", "")
+        end
+    end
+
+    -- Content rows (generic extra HUD rows populated by external enrichers)
+    if content_row_count > 0 then
+        local max_elements = 0
+        for _, row in ipairs(view_model.content_rows) do
+            max_elements = math.max(max_elements, #(row.elements or {}))
+        end
+
+        eye_spy.render.ensure_content_row_slots(state, player, content_row_count, max_elements)
+
+        local content_offset_x = eye_spy.config.content_row_offset_x or 0
+        local content_offset_y = eye_spy.config.content_row_offset_y or 0
+        local content_base_y = origin_y + first_line_y + (line_count * line_step) + lines_offset_y + content_offset_y
+
+        for i = 1, content_row_count do
+            local row = view_model.content_rows[i]
+            local row_elements = row.elements or {}
+            local row_y = content_base_y + ((i - 1) * content_row_step_val) + content_offset_y
+            local current_x = math.max(text_x - 28, left_edge_x + 24) + content_offset_x
+            local hud_row = state.hud_ids.content_rows[i] or {}
+
+            for j = 1, #row_elements do
+                local elem = row_elements[j]
+                local expected_type = elem.type == "image" and "image" or "text"
+                local elem_id = hud_row[j]
+
+                if not elem_id then
+                    elem_id = player:hud_add({
+                        type = expected_type,
+                        position = { x = 0.5, y = 0 },
+                        offset = { x = 0, y = 0 },
+                        text = "",
+                        scale = { x = 1, y = 1 },
+                        alignment = { x = 1, y = 0 },
+                        z_index = 2,
+                    })
+                    hud_row[j] = elem_id
+                else
+                    local def = player:hud_get(elem_id)
+                    if not def or hud_elem_type(def) ~= expected_type then
+                        if def then player:hud_remove(elem_id) end
+                        elem_id = player:hud_add({
+                            type = expected_type,
+                            position = { x = 0.5, y = 0 },
+                            offset = { x = 0, y = 0 },
+                            text = "",
+                            scale = { x = 1, y = 1 },
+                            alignment = { x = 1, y = 0 },
+                            z_index = 2,
+                        })
+                        hud_row[j] = elem_id
+                    else
+                        player:hud_change(elem_id, "alignment", { x = 1, y = 0 })
+                    end
+                end
+
+                if elem.type == "image" then
+                    local size = elem.size or content_icon_size
+                    local scale = size / ICON_TEXTURE_SIZE
+                    player:hud_change(elem_id, "position", layout.pos)
+                    player:hud_change(elem_id, "offset", { x = current_x, y = row_y })
+                    player:hud_change(elem_id, "scale", { x = scale, y = scale })
+                    player:hud_change(elem_id, "text", elem.texture or "")
+                elseif elem.type == "text" then
+                    local scale = elem.scale or 1.0
+                    player:hud_change(elem_id, "position", layout.pos)
+                    player:hud_change(elem_id, "offset", { x = current_x, y = row_y })
+                    player:hud_change(elem_id, "scale", { x = scale, y = scale })
+                    player:hud_change(elem_id, "text", elem.text or "")
+                    player:hud_change(elem_id, "number", elem.color or 0xFFFFFF)
+                end
+
+                local elem_width = 0
+                if elem.type == "image" then
+                    elem_width = elem.size or content_icon_size
+                elseif elem.type == "text" then
+                    elem_width = elem.width or math.ceil(#(elem.text or "") * 6 * (elem.scale or 1.0))
+                end
+                local gap = element_padding
+                if j == 1 then
+                    gap = gap + (eye_spy.config.content_row_icon_text_gap or 0)
+                end
+                current_x = current_x + elem_width + gap
+            end
+
+            -- Hide unused slots in this row
+            for j = #row_elements + 1, #hud_row do
+                player:hud_change(hud_row[j], "text", "")
+            end
+        end
+    end
+
+    -- Hide unused content rows entirely
+    for i = content_row_count + 1, #(state.hud_ids.content_rows or {}) do
+        for _, id in ipairs(state.hud_ids.content_rows[i] or {}) do
+            player:hud_change(id, "text", "")
         end
     end
 end

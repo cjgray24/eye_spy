@@ -34,6 +34,37 @@ local function extract_tile_texture(tile)
     return type(tile) == "string" and tile or ""
 end
 
+-- Common suffixes used by technical/auxiliary nodes (doors, beds, double chests, etc.)
+local TECHNICAL_SUFFIXES = {
+    "_t_1$", "_t_2$", "_b_1$", "_b_2$",
+    "_left$", "_right$",
+    "_open$", "_closed$",
+}
+
+-- Attempts to resolve a technical node name to its base item name.
+-- Priority: 1) def.drop string, 2) suffix stripping heuristic.
+local function resolve_base_item(node_name, def)
+    if not node_name or node_name == "" then
+        return nil
+    end
+
+    -- Priority 1: use the drop field if it points to a different item
+    if def and type(def.drop) == "string" and def.drop ~= "" and def.drop ~= node_name then
+        return def.drop
+    end
+
+    -- Priority 2: strip known technical suffixes and verify existence
+    local base = node_name
+    for _, pattern in ipairs(TECHNICAL_SUFFIXES) do
+        local candidate = base:gsub(pattern, "")
+        if candidate ~= base and minetest.registered_items[candidate] then
+            return candidate
+        end
+    end
+
+    return nil
+end
+
 -- Extracts the best available texture from an item/node definition.
 local function extract_item_texture(item_name, def)
     local item_def = def or (item_name and minetest.registered_items[item_name]) or nil
@@ -201,6 +232,7 @@ local function get_dropped_item_target(ref, entity)
         stack_meta_summary = meta_summary,
         stack_has_custom_description = has_custom_description,
         texture = extract_item_texture(item_name, item_def),
+        inventory_texture = core.get_item_inventory_texture(item_name, 32),
         mesh = nil,
         light_level = nil,
         item_def_description = item_def.short_description or item_def.description or "",
@@ -330,6 +362,7 @@ function eye_spy.target.get_preview(preview_type)
             pos = { x = 0, y = 0, z = 0 },
             def = def,
             texture = def and def.tiles and def.tiles[1] or "eye_spy_default_texture.png",
+            inventory_texture = core.get_item_inventory_texture("eye_spy:preview_node", 32),
             mesh = def and def.mesh or "eye_spy_default_mesh.obj",
             color = def and def.color,
             palette = def and def.palette,
@@ -396,18 +429,24 @@ function eye_spy.target.acquire(player, opts)
 
     -- Builds a complete node target table.
     local function make_node_target(node, under_pos, def, is_liquid, liquid_type, liquid_level)
+        local base_item = resolve_base_item(node.name, def)
+        local base_def = base_item and minetest.registered_items[base_item]
+        local display_name = base_item or node.name
+
         return {
             kind = "node",
             key = "node:" .. node.name .. "@" .. pos_key(under_pos),
             name = node.name,
             full_name = node.name,
             description = first_line(def and def.description)
-                or eye_spy.readable_name_from_id(node.name)
+                or first_line(base_def and base_def.description)
+                or eye_spy.readable_name_from_id(display_name)
                 or S("Unknown"),
             modname = eye_spy.get_modname_from_obj(node.name) or S("Unknown"),
             pos = vector.new(under_pos),
             def = def,
             texture = extract_node_texture(def),
+            inventory_texture = core.get_item_inventory_texture(base_item or node.name, 32),
             mesh = def and def.mesh or "eye_spy_default_mesh.obj",
             color = def and def.color,
             palette = def and def.palette,

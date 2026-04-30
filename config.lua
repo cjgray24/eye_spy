@@ -165,6 +165,45 @@ eye_spy.config = {
     -- Show the estimated dig-time line for the targeted node.
     -- Corresponds to eye_spy.default_show_dig_time in settings.
     default_show_dig_time = settings:get_bool("eye_spy.default_show_dig_time") ~= false,
+
+    -- Background opacity (alpha) for the HUD panel. 0 = fully transparent,
+    -- 255 = fully opaque. Corresponds to eye_spy.default_bg_alpha in settings.
+    default_bg_alpha = tonumber(settings:get("eye_spy.default_bg_alpha")) or 200,
+
+    -- -------------------------------------------------------------------------
+    -- Content rows (extra HUD rows for mod integrations)
+    -- -------------------------------------------------------------------------
+    -- When true, Eye Spy renders optional content rows below the standard
+    -- info lines.  Each row is an array of {type="image"|"text", ...}
+    -- elements supplied by external enrichers via view_model.content_rows.
+    -- Corresponds to eye_spy.show_content_rows in settings.
+    show_content_rows = settings:get_bool("eye_spy.show_content_rows") ~= false,
+
+    -- Pixel size of the small item icons shown inside content rows.
+    -- Corresponds to eye_spy.content_row_icon_size in settings.
+    content_row_icon_size = tonumber(settings:get("eye_spy.content_row_icon_size")) or 16,
+
+    -- Horizontal offset (in pixels) applied to content row elements.
+    -- Corresponds to eye_spy.content_row_offset_x in settings.
+    content_row_offset_x = tonumber(settings:get("eye_spy.content_row_offset_x")) or 0,
+
+    -- Vertical offset (in pixels) applied to content row elements.
+    -- Corresponds to eye_spy.content_row_offset_y in settings.
+    content_row_offset_y = tonumber(settings:get("eye_spy.content_row_offset_y")) or 0,
+
+    -- Horizontal padding (in pixels) between elements inside the same row.
+    -- Corresponds to eye_spy.content_row_element_padding in settings.
+    content_row_element_padding = tonumber(settings:get("eye_spy.content_row_element_padding")) or 4,
+
+    -- Extra gap (in pixels) between the icon and the first text element
+    -- inside a content row.  Added on top of element_padding so the
+    -- icon is visually separated from the label.
+    -- Corresponds to eye_spy.content_row_icon_text_gap in settings.
+    content_row_icon_text_gap = tonumber(settings:get("eye_spy.content_row_icon_text_gap")) or 16,
+
+    -- Vertical step (in pixels) between consecutive content rows.
+    -- Corresponds to eye_spy.content_row_step in settings.
+    content_row_step = tonumber(settings:get("eye_spy.content_row_step")) or 18,
 }
 
 -- ---------------------------------------------------------------------------

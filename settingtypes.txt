@@ -58,3 +58,30 @@ eye_spy.default_show_liquid_info (Default: Show Liquid Info) bool true
 
 # Show the estimated time to dig the targeted block with the current tool.
 eye_spy.default_show_dig_time (Default: Show Dig Time) bool true
+
+# Background opacity for the HUD panel (0 = fully transparent, 255 = fully opaque).
+eye_spy.default_bg_alpha (Default: BG Opacity) int 200 0 255
+
+[Content Rows]
+
+# Show optional content rows below standard info lines (populated by external mods).
+# Mods populate rows via the eye_spy enricher API.
+eye_spy.show_content_rows (Show Content Rows) bool true
+
+# Pixel size of icons inside content rows.
+eye_spy.content_row_icon_size (Content Row Icon Size) int 16 8 32
+
+# Horizontal offset (pixels) for content row elements.
+eye_spy.content_row_offset_x (Content Row X Offset) int 0 -100 100
+
+# Vertical offset (pixels) for content row elements.
+eye_spy.content_row_offset_y (Content Row Y Offset) int 0 -100 100
+
+# Horizontal padding (pixels) between elements in the same content row.
+eye_spy.content_row_element_padding (Content Row Element Padding) int 4 0 20
+
+# Extra gap (pixels) between the icon and the text label in a content row.
+eye_spy.content_row_icon_text_gap (Content Row Icon-Text Gap) int 16 0 50
+
+# Vertical step (pixels) between consecutive content rows.
+eye_spy.content_row_step (Content Row Step) int 18 8 40

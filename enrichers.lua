@@ -458,7 +458,56 @@ function eye_spy.enrichers.register(id, spec)
         id = id,
         enabled = spec.enabled,
         apply = spec.apply,
+        takeover = spec.takeover,
     }
+end
+
+-- Registers a post-apply hook that runs AFTER all enrichers have finished.
+-- Use this when you need to override or cleanup the view model as the final step.
+function eye_spy.enrichers.set_post_apply(view_model, fn)
+    view_model.post_apply = fn
+end
+
+-- Public utility: clears all standard lines from the view model.
+-- Use this in custom enrichers when you want to replace eye_spy's
+-- default lines (dig time, light, tool hints, etc.) with your own content.
+function eye_spy.enrichers.clear_lines(view_model)
+    view_model.lines = {}
+end
+
+-- Removes a single line by its ID from the view model.
+function eye_spy.enrichers.disable_line(view_model, line_id)
+    for i = #view_model.lines, 1, -1 do
+        if view_model.lines[i].id == line_id then
+            table.remove(view_model.lines, i)
+        end
+    end
+end
+
+-- Removes all lines whose ID starts with the given prefix.
+function eye_spy.enrichers.disable_lines_by_prefix(view_model, prefix)
+    for i = #view_model.lines, 1, -1 do
+        local id = view_model.lines[i].id or ""
+        if id:sub(1, #prefix) == prefix then
+            table.remove(view_model.lines, i)
+        end
+    end
+end
+
+-- Restores a single default line by its ID into the view model.
+-- Only works when a takeover enricher is running and the line was present
+-- in the default set before takeover cleared it.
+function eye_spy.enrichers.enable_line(view_model, line_id)
+    if not view_model._default_lines then
+        return
+    end
+
+    for _, line in ipairs(view_model._default_lines) do
+        if line.id == line_id then
+            view_model.lines[#view_model.lines + 1] = line
+            break
+        end
+    end
 end
 
 local function ensure_shared_context(context, target)
@@ -575,10 +624,28 @@ end
 function eye_spy.enrichers.run(context, target, view_model)
     ensure_shared_context(context, target)
 
+    -- Snapshot default lines before any enricher runs.
+    -- Takeover enrichers use this to let enable_line restore defaults.
+    view_model._default_lines = {}
+    for _, line in ipairs(view_model.lines) do
+        view_model._default_lines[#view_model._default_lines + 1] = line
+    end
+
     for _, enricher in ipairs(eye_spy.enrichers.registry) do
-        if not enricher.enabled or enricher.enabled(context, target, view_model) then
+        local enabled_result
+        if enricher.enabled then
+            enabled_result = enricher.enabled(context, target, view_model)
+        else
+            enabled_result = true
+        end
+
+        if enabled_result then
             local perf_on = eye_spy.perf and eye_spy.perf.enabled and minetest.get_us_time
             local start_us = perf_on and minetest.get_us_time() or 0
+
+            if enricher.takeover then
+                view_model.lines = {}
+            end
 
             local ok, err = pcall(enricher.apply, context, target, view_model)
             if not ok then
@@ -591,6 +658,8 @@ function eye_spy.enrichers.run(context, target, view_model)
             end
         end
     end
+
+    view_model._default_lines = nil
 end
 
 eye_spy.enrichers.register("node_tool", {
