@@ -48,20 +48,20 @@ local LAYOUT_META_DEFAULTS = {
     es_footer_offset_y = 0,
     es_bg_pad_left = 7,
     es_bg_pad_right = 0,
-    es_bg_pad_top = 5,
+    es_bg_pad_top = 2,
     es_bg_pad_bottom = 0,
     es_bg_extra_w = 0,
     es_bg_extra_h = 0,
     es_bg_scale_x_pct = 100,
     es_bg_scale_y_pct = 100,
-    es_icon_size = 56,
+    es_icon_size = 20,
     es_title_scale_pct = 100,
     es_subtitle_scale_pct = 100,
     es_line_scale_pct = 100,
     es_footer_scale_pct = 100,
     es_first_line_y_adj = 0,
-    es_line_step_adj = -2, -- Fix 4: canonical default is -2
-    es_footer_nudge_adj = 0,
+    es_line_step_adj = -6,
+    es_footer_nudge_adj = -4,
     es_text_base_x_adj = 0,
     es_icon_base_x_adj = 0,
     es_top_margin_adj = 0,
@@ -204,6 +204,7 @@ local LAYOUT_SLIDER_BOUNDS = {
     es_icon_base_x_adj = { min = -180, max = 220 },
     es_top_margin_adj = { min = -50, max = 120 },
     es_bottom_margin_adj = { min = -50, max = 140 },
+    es_bg_alpha = { min = 0, max = 255 },
 }
 
 local DRAFT_KEY_TYPES = {
@@ -228,6 +229,7 @@ local DRAFT_KEY_TYPES = {
     es_layout_target = "string",
     es_layout_step = "int",
     es_hud_enabled = "string", -- Fix 6: add es_hud_enabled to draft key types
+    es_bg_alpha = "int",
 }
 
 for key, default_value in pairs(LAYOUT_META_DEFAULTS) do
@@ -350,6 +352,7 @@ local function save_old_values(meta)
         spawn_safe_light_threshold = meta:get_int("es_spawn_safe_light_threshold"),
         show_growth                = meta:get_string("es_show_growth"),
         show_icons                 = meta:get_string("es_show_icons"),
+        bg_alpha                   = meta:get_int("es_bg_alpha"),
         layout                     = {},
     }
 
@@ -388,6 +391,7 @@ local function restore_old_values(meta, values)
     meta:set_int("es_spawn_safe_light_threshold", values.spawn_safe_light_threshold or 8)
     meta:set_string("es_show_growth", values.show_growth or "true")
     meta:set_string("es_show_icons", values.show_icons or "true")
+    meta:set_int("es_bg_alpha", values.bg_alpha or eye_spy.config.default_bg_alpha)
 
     for key, default_value in pairs(LAYOUT_META_DEFAULTS) do
         local saved_value = values.layout and values.layout[key]
@@ -655,6 +659,7 @@ function eye_spy.get_ui(player, data)
     local line_color_val = get_effective_int(meta, player_name, "es_line_color_val")
     local growth_color_val = get_effective_int(meta, player_name, "es_growth_color_val")
     local soil_color_val = get_effective_int(meta, player_name, "es_soil_color_val")
+    local bg_alpha = get_effective_int(meta, player_name, "es_bg_alpha")
 
     local formspec = table.concat({
         "formspec_version[6]",
@@ -681,7 +686,10 @@ function eye_spy.get_ui(player, data)
         "label[0.55,2.95;B]",
         "box[0.88,2.97;5.3,0.34;#0000FFCC]",
         "scrollbar[0.88,2.95;5.3,0.42;horizontal;b_" .. player_index .. ";" .. (b or 27) .. "]",
-        "button[0.55,3.85;2.5,0.7;default_color;" .. S("Set to Default") .. "]",
+        "label[0.55,3.45;" .. S("Opacity") .. "]",
+        "box[0.88,3.47;5.3,0.34;#AAAAAACC]",
+        "scrollbar[0.88,3.45;5.3,0.42;horizontal;bg_alpha_" .. player_index .. ";" .. bg_alpha .. "]",
+        "button[0.55,4.15;2.5,0.7;default_color;" .. S("Set to Default") .. "]",
 
         "box[6.75,0.9;6.35,3.9;#00000020]",
         "label[7.0,1.15;" .. S("HUD Setup") .. "]",
@@ -817,6 +825,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
     apply_main_int_slider("line_color_" .. player_index, "es_line_color_val")
     apply_main_int_slider("growth_color_" .. player_index, "es_growth_color_val")
     apply_main_int_slider("soil_color_" .. player_index, "es_soil_color_val")
+    apply_main_int_slider("bg_alpha_" .. player_index, "es_bg_alpha")
 
     if main_slider_event then
         local now_us = minetest.get_us_time and minetest.get_us_time() or 0

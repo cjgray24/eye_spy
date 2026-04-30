@@ -180,6 +180,118 @@ Eye Spy is translated into 8 languages:
 
 To contribute a new translation or improve an existing one, copy `locale/eye_spy.template.tr`, rename it to `eye_spy.<lang_code>.tr`, and fill in the translations on the right side of each `=` line.
 
+## API for Mod Developers
+
+Eye Spy exposes a public Lua API so other mods can customize or extend the HUD.
+
+### `eye_spy.enrichers.register(id, spec)`
+
+Register a custom enricher to add your own lines when the player looks at something.
+
+```lua
+eye_spy.enrichers.register("my_mod_info", {
+    enabled = function(context, target, view_model)
+        return target.kind == "node" and target.name == "my_mod:special_block"
+    end,
+    apply = function(context, target, view_model)
+        view_model.lines[#view_model.lines + 1] = {
+            id = "my_line",
+            text = "Custom info here",
+            color = 0xFFFFFF,
+        }
+    end,
+})
+```
+
+> **Preserving semantic colors**
+> When a player has *auto-contrast text* enabled, Eye Spy normally replaces line colors with automatically generated accents. If your line color carries meaning (e.g. green = ok, red = error), set `semantic = true` so Eye Spy only adjusts contrast and keeps your intended hue:
+> ```lua
+> view_model.lines[#view_model.lines + 1] = {
+>     id = "my_line",
+>     text = "Custom info here",
+>     color = 0x55FF55,
+>     semantic = true,
+> }
+> ```
+
+### `eye_spy.enrichers.set_post_apply(view_model, fn)`
+
+Register a function that runs **after** all enrichers have finished, giving you the last word on the panel. Use this when you need to override subtitle, icon, or remove lines that other enrichers may have added.
+
+```lua
+apply = function(context, target, view_model)
+    -- Add your content...
+    eye_spy.enrichers.set_post_apply(view_model, function(vm)
+        vm.subtitle = ""     -- override subtitle
+        vm.lines = {}        -- remove all default lines
+    end)
+end
+```
+
+### `takeover` mode
+
+When an enricher sets `takeover = true`, Eye Spy **hides all default lines** before calling `apply`. The enricher gets a blank panel and decides exactly what appears. This is the default and recommended way to build custom HUDs for your nodes.
+
+```lua
+eye_spy.enrichers.register("drawer_info", {
+    enabled = function(_, target)
+        return target.name:find("^drawers:")
+    end,
+    takeover = true,
+    apply = function(_, _, view_model)
+        view_model.lines[#view_model.lines + 1] = {
+            id = "drawer_count",
+            text = "Items: 42",
+            color = 0x55FF55,
+            semantic = true,
+        }
+    end,
+})
+```
+
+### `eye_spy.enrichers.enable_line(view_model, line_id)`
+
+When running in `takeover` mode, you can selectively bring back a default line if you still want it shown alongside your custom content.
+
+```lua
+apply = function(_, _, view_model)
+    -- Bring back the liquid line from Eye Spy's defaults
+    eye_spy.enrichers.enable_line(view_model, "liquid")
+
+    -- Add your own lines...
+end
+```
+
+### `view_model.content_rows`
+
+Add richly structured content rows below the standard info lines. Each row is an array of `{type="image"|"text", ...}` elements laid out horizontally.
+
+```lua
+apply = function(context, target, view_model)
+    view_model.content_rows[#view_model.content_rows + 1] = {
+        elements = {
+            { type = "image", texture = "default_stone.png", size = 16 },
+            { type = "text",  text = "Stone", color = 0xFFFFFF, scale = 1.0 },
+            { type = "text",  text = "x42",   color = 0xAAAAAA, scale = 0.9 },
+        }
+    }
+end
+```
+
+**Element fields**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `type` | string | yes | `"image"` or `"text"` |
+| `texture` | string | for image | Texture string displayed for an image element |
+| `size` | int | for image | Pixel size of the image (default: `content_row_icon_size` setting) |
+| `text` | string | for text | Text content |
+| `color` | int | for text | Hex color (default `0xFFFFFF`) |
+| `scale` | float | for text | Text scale multiplier (default `1.0`) |
+| `width` | int | optional | Override calculated width in pixels for layout |
+
+---
+
 ## Compatibility
 
 | Game | Status | Notes |
